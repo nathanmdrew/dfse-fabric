@@ -1,0 +1,18 @@
+# Data files
+*.rds
+*.RDS
+*.xlsx
+*.csv
+*.xls
+
+# R history and workspace
+.Rhistory
+.RData
+.Rproj.user/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Other
+*.code-workspace
