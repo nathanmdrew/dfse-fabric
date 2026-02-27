@@ -11,13 +11,14 @@
 ###
 ### TODOs:   LoDs - what does "below LoD" mean? Per observation or a central
 ###          measure?
-###        
+### 
 
 library(dplyr)
 library(readxl)
 library(tidyr)
 library(stringr)
 library(ggplot2)
+library(patchwork)
 
 setwd("C:/Users/vom8/dfse-fabric/")
 
@@ -29,33 +30,36 @@ setwd("C:/Users/vom8/dfse-fabric/")
 #rm(original_data)
 
 # Parse SampleID into components (keep SampleID as the original full value)
-d <- readRDS("original_data.RDS")
-d$rownum <- seq(from=1, to=nrow(d))
+#d <- readRDS("original_data.RDS")
+#d$rownum <- seq(from=1, to=nrow(d))
+# 
+# d <- d %>%
+#   mutate(SampleID = as.character(SampleID)) %>%
+#   mutate(ParticipantID = str_extract(SampleID, "^[^_]+")) %>%
+#   mutate(rest = str_remove(SampleID, "^[^_]+_")) %>%
+#   separate(rest, into = c("Condition2", "SampleLocation2", "SampleID2_raw"),
+#            sep = "_", remove = TRUE, extra = "merge", fill = "right") %>%
+#   mutate(SampleID2 = as.integer(str_extract(SampleID2_raw, "\\d+"))) %>%
+#   select(-SampleID2_raw)
+# 
+# # Fix ParticipantID - uppercase, and fix the O instead of a 0.
+# d <- d %>%
+#   mutate(ParticipantID = toupper(ParticipantID)) %>%
+#   mutate(ParticipantID = str_replace_all(ParticipantID, "O", "0"))
+# 
+# # Already checked that SampleLocation2 and Condition2 match the existing variables
+# # but should allow for a separation for the "Shirt" occurrence of S
+# d <- d %>% select(-Condition2, -SampleLocation2)
+# 
+# # Recalculate total PAH; 5 rows where totals appear to be incorrect
+# d <- d %>% mutate(new_totalPAH = rowSums(select(., 23:37), na.rm = FALSE))
+# 
+# # drop the column with the single value of 1.1
+# d <- d %>% select(-`...54`)
+# 
+# saveRDS(d, file="cleaned_data.RDS")
 
-d <- d %>%
-  mutate(SampleID = as.character(SampleID)) %>%
-  mutate(ParticipantID = str_extract(SampleID, "^[^_]+")) %>%
-  mutate(rest = str_remove(SampleID, "^[^_]+_")) %>%
-  separate(rest, into = c("Condition2", "SampleLocation2", "SampleID2_raw"),
-           sep = "_", remove = TRUE, extra = "merge", fill = "right") %>%
-  mutate(SampleID2 = as.integer(str_extract(SampleID2_raw, "\\d+"))) %>%
-  select(-SampleID2_raw)
-
-# Fix ParticipantID - uppercase, and fix the O instead of a 0.
-d <- d %>%
-  mutate(ParticipantID = toupper(ParticipantID)) %>%
-  mutate(ParticipantID = str_replace_all(ParticipantID, "O", "0"))
-
-# Already checked that SampleLocation2 and Condition2 match the existing variables
-# but should allow for a separation for the "Shirt" occurrence of S
-d <- d %>% select(-Condition2, -SampleLocation2)
-
-# Recalculate total PAH; 5 rows where totals appear to be incorrect
-d <- d %>% mutate(new_totalPAH = rowSums(select(., 23:37), na.rm = FALSE))
-
-# drop the column with the single value of 1.1
-d <- d %>% select(-`...54`)
-
+d <- readRDS(file="cleaned_data.RDS")
 
 ################################
 ### QC Stuff
@@ -243,7 +247,6 @@ if (length(mismatches) == 0) {
 }
 
 
-
 # 6. Histograms of each PAH LoD
 #    Not sure what "below LoD" really means - by each measurement, or some
 #    central tendency?
@@ -264,3 +267,145 @@ for (lod in lod_cols){
 }
 
 summary(d[39])
+
+
+
+
+### Is the glove donning useful?
+
+qc <- d %>% filter(`Sample Location` %in% c("Thumb", "Palm", "Finger"))
+
+table(qc$Timing)
+
+# Reorder timing for logical flow
+qc_ordered <- qc %>%
+  mutate(Timing = factor(Timing, 
+                         levels = c("Donning", "Donning/Burn", "Burn", "Doffing")))
+
+
+ggplot(qc_ordered, aes(x = Timing, y = new_totalPAH, fill = Timing)) +
+  geom_boxplot() +
+  labs(
+    title = "Total PAH Distribution by Timing",
+    x = "Timing",
+    y = "Total PAH (µg/g)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggplot(qc_ordered, aes(x = new_totalPAH)) +
+  geom_histogram(bins = 20, fill = "steelblue", color = "black") +
+  facet_wrap(~Timing, ncol = 2) +
+  labs(
+    title = "Distribution of Total PAH by Timing",
+    x = "Total PAH (µg/g)",
+    y = "Count"
+  ) +
+  theme_minimal()
+
+ggplot(qc_ordered, aes(x = new_totalPAH)) +
+  geom_histogram(bins = 20, fill = "steelblue", color = "black") +
+  facet_wrap(~Timing, ncol = 2, scales = "free_y") +  # free_y allows different y-axis scales
+  labs(
+    title = "Distribution of Total PAH by Timing",
+    x = "Total PAH (µg/g)",
+    y = "Count"
+  ) +
+  theme_minimal()
+
+table(d$Timing)
+table(d$ParticipantID)
+table(d$`Sample Location`)
+
+
+
+
+library(tidyverse)
+
+# ============================================================
+# STEP 1: Characterize zero/non-detect fraction by
+# Sample Location x Condition
+# ============================================================
+
+censoring_summary <- d %>%
+  group_by(Condition, `Sample Location`) %>%
+  summarise(
+    n_total    = n(),
+    n_zero     = sum(new_totalPAH == 0, na.rm = TRUE),
+    n_nonzero  = sum(new_totalPAH > 0, na.rm = TRUE),
+    pct_zero   = round(100 * n_zero / n_total, 1),
+    .groups = "drop"
+  ) %>%
+  arrange(Condition, desc(pct_zero))
+
+print(censoring_summary)
+
+# Visual summary - heatmap of censoring fraction
+censor_heat <- ggplot(censoring_summary, aes(x = Condition, y = `Sample Location`, fill = pct_zero)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = paste0(pct_zero, "%\n(n=", n_total, ")")), size = 3) +
+  scale_fill_gradient(low = "white", high = "firebrick",
+                      name = "% Zero") +
+  theme_minimal() +
+  labs(
+    title = "Percent Non-Detects by Sample Location and Condition",
+    x = "Condition",
+    y = "Sample Location"
+  )
+
+pdf(
+  file = paste0("PAH_paper_doll_", censor, ".pdf"),
+  width = 10, height = 8
+)
+
+# ============================================================
+# Censoring by Subject x Sample Location
+# (collapsed across Condition for readability)
+# ============================================================
+
+# Heatmap: censoring by Subject x Sample Location
+censoring_by_subject <- d %>%
+  group_by(ParticipantID, `Sample Location`) %>%
+  summarise(
+    n_total  = n(),
+    n_zero   = sum(new_totalPAH == 0, na.rm = TRUE),
+    pct_zero = round(100 * n_zero / n_total, 1),
+    .groups  = "drop"
+  )
+
+ggplot(censoring_by_subject, 
+       aes(x = factor(ParticipantID), y = `Sample Location`, fill = pct_zero)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = paste0(pct_zero, "%")), size = 2.5) +
+  scale_fill_gradient(low = "white", high = "firebrick", name = "% Zero") +
+  theme_minimal() +
+  labs(
+    title = "Percent Non-Detects by Subject and Sample Location",
+    x = "Participant ID",
+    y = "Sample Location"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# ============================================================
+# Spotlight: Post-hoc locations (Fly, Lower Chest, Shirt)
+# How many subjects had ANY detection at these locations?
+# ============================================================
+
+posthoc_locations <- c("Fly", "Lower Chest", "Shirt")
+
+d %>%
+  filter(`Sample Location` %in% posthoc_locations) %>%
+  group_by(ParticipantID, `Sample Location`) %>%
+  summarise(
+    n_total   = n(),
+    n_detect  = sum(new_totalPAH > 0, na.rm = TRUE),
+    max_PAH   = max(new_totalPAH, na.rm = TRUE),
+    total_PAH = sum(new_totalPAH, na.rm = TRUE),
+    .groups   = "drop"
+  ) %>%
+  arrange(`Sample Location`, desc(total_PAH)) %>%
+  print(n = Inf)
+
+###
+
+qc <- d %>% filter(ParticipantID=="BP36") %>% filter(`Sample Location`=="Pant")
