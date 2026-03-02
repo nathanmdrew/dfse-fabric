@@ -23,14 +23,14 @@ library(patchwork)
 setwd("C:/Users/vom8/dfse-fabric/")
 
 ### let's get a clean copy of the fabric data to always work from
-#original_data <- read_excel(path="C:/Users/vom8/dfse-fabric/Human_Subject_Results_Ver5_master.xlsx",
+#original_data <- read_excel(path="C:/Users/vom8/dfse-fabric/data/Human_Subject_Results_Ver5_master.xlsx",
 #                            sheet="Fabric")
 
-#saveRDS(original_data, file="original_data.RDS")
+#saveRDS(original_data, file="data/original_data.RDS")
 #rm(original_data)
 
 # Parse SampleID into components (keep SampleID as the original full value)
-#d <- readRDS("original_data.RDS")
+#d <- readRDS("data/original_data.RDS")
 #d$rownum <- seq(from=1, to=nrow(d))
 # 
 # d <- d %>%
@@ -57,9 +57,12 @@ setwd("C:/Users/vom8/dfse-fabric/")
 # # drop the column with the single value of 1.1
 # d <- d %>% select(-`...54`)
 # 
-# saveRDS(d, file="cleaned_data.RDS")
+# drop the LOD indicator columns
+#d <- d %>% select(-all_of(8:22))
 
-d <- readRDS(file="cleaned_data.RDS")
+# saveRDS(d, file="data/cleaned_data.RDS")
+
+d <- readRDS(file="data/cleaned_data.RDS")
 
 ################################
 ### QC Stuff
