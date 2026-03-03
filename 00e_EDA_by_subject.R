@@ -29,7 +29,7 @@ setwd("C:/Users/vom8/dfse-fabric/")
 #saveRDS(original_data, file="data/original_data.RDS")
 #rm(original_data)
 
-# Parse SampleID into components (keep SampleID as the original full value)
+### Parse SampleID into components (keep SampleID as the original full value)
 #d <- readRDS("data/original_data.RDS")
 #d$rownum <- seq(from=1, to=nrow(d))
 # 
@@ -42,27 +42,52 @@ setwd("C:/Users/vom8/dfse-fabric/")
 #   mutate(SampleID2 = as.integer(str_extract(SampleID2_raw, "\\d+"))) %>%
 #   select(-SampleID2_raw)
 # 
-# # Fix ParticipantID - uppercase, and fix the O instead of a 0.
+### Fix ParticipantID - uppercase, and fix the O instead of a 0.
 # d <- d %>%
 #   mutate(ParticipantID = toupper(ParticipantID)) %>%
 #   mutate(ParticipantID = str_replace_all(ParticipantID, "O", "0"))
 # 
-# # Already checked that SampleLocation2 and Condition2 match the existing variables
-# # but should allow for a separation for the "Shirt" occurrence of S
+### Already checked that SampleLocation2 and Condition2 match the existing variables
+### but should allow for a separation for the "Shirt" occurrence of S
 # d <- d %>% select(-Condition2, -SampleLocation2)
 # 
-# # Recalculate total PAH; 5 rows where totals appear to be incorrect
+### Recalculate total PAH; 5 rows where totals appear to be incorrect
 # d <- d %>% mutate(new_totalPAH = rowSums(select(., 23:37), na.rm = FALSE))
 # 
-# # drop the column with the single value of 1.1
+### drop the column with the single value of 1.1
 # d <- d %>% select(-`...54`)
 # 
-# drop the LOD indicator columns
+### drop the LOD indicator columns
 #d <- d %>% select(-all_of(8:22))
+
+### new timing variable to reflect the 2025 underglove paper
+### Doffing stays the same; other timings = "Donning/Firefighting"
+### For other Sampling Locations (i.e., not glove), timing = "Doffing"
+
+# glove_locs <- c("Thumb", "Palm", "Finger")
+# 
+# d <- d %>%
+#   mutate(
+#     Timing_new = case_when(
+#       `Sample Location` %in% glove_locs & Timing == "Doffing" ~ "Doffing",
+#       `Sample Location` %in% glove_locs & Timing != "Doffing" ~ "Donning/Firefighting",
+#       TRUE ~ "Doffing"  # non-glove locations
+#     ),
+#     Timing_new = factor(Timing_new, levels = c("Donning/Firefighting", "Doffing"))
+#   )
+# 
+# table(d$Timing, d$Timing_new, useNA = "ifany")
+# table(d$`Sample Location`, d$Timing_new, useNA = "ifany")
 
 # saveRDS(d, file="data/cleaned_data.RDS")
 
 d <- readRDS(file="data/cleaned_data.RDS")
+
+
+
+
+
+
 
 ################################
 ### QC Stuff
