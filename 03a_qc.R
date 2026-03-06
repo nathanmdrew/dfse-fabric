@@ -247,3 +247,20 @@ p4 <- ggplot(d_diag, aes(x = reorder(SampleLocation, sresid_m2, FUN = median),
 (p1 + p2) / (p3 + p4) +
   plot_annotation(title = "Model m2: Outlier Pattern Investigation")
 
+# -----------------------------------------
+# --- Step 5: Save artifacts to 03a_output
+# -----------------------------------------
+
+# Model diagnostics
+saveRDS(d_diag, "03a_output/d_diag.rds")
+saveRDS(outliers, "03a_output/outliers.rds")
+saveRDS(outlier_pah, "03a_output/outlier_pah.rds")
+
+# Influence diagnostics
+saveRDS(infl, "03a_output/influence_m2.rds")
+saveRDS(cooks_df, "03a_output/cooks_df.rds")
+
+# Diagnostic plots
+ggsave("03a_output/m2_outlier_patterns.png",
+       (p1 + p2) / (p3 + p4) + plot_annotation(title = "Model m2: Outlier Pattern Investigation"),
+       width = 14, height = 8, dpi = 300)
