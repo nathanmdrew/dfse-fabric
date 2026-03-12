@@ -100,3 +100,18 @@ Create side-by-side paper doll visualizations showing the original `new_totalPAH
 ## 14. Hurdle model revisited
 
 Earlier (see discussion in chat history), a hurdle/two-part model was rejected on mechanistic grounds — the zeros reflect measurement sensitivity limits, not a distinct biological process. However, the hurdle model has a pragmatic advantage: **neither part requires imputation**. Part A (logistic: P(detected | covariates)) uses the binary detect/non-detect outcome, which is real data for all 448 observations. Part B (continuous: E[totalPAH | detected, covariates]) models only the ~64 observations with real measured values. This avoids the imputation concerns entirely and preserves the real signals (e.g., glove locations have high exposure, neck sometimes has high exposure, ad hoc fly measurements only in SL/SS conditions). The tradeoff is interpreting two sets of results and the MCAR assumption for Part B (detection is not random — it is associated with location, timing, and condition). Despite this, the hurdle model may tell a richer and more defensible story than the imputation-based approach, particularly when ~90% of values are imputed.
+
+
+## 15. Duplicate measurements within Participant × Condition × Location × Timing (`Timing_new`)
+
+Script `08` addressed newly identified repeat measurements within the full key (`ParticipantID`, `Condition`, `SampleLocation`, `Timing_new`). Duplicate burden was limited (28 duplicate full-key combinations across 12 participants; 30 extra rows total), but sufficient to justify explicit sensitivity analysis.
+
+Three parallel strategies were fit using the same fixed-effects structure (`Condition + Timing_new + SampleLocation`) with participant random intercepts and location-specific residual variance (`varIdent`):
+
+- **GM collapse:** impute first, then collapse duplicates by geometric mean of `totalPAH_imputed`
+- **Median collapse:** impute first, then collapse duplicates by median of `totalPAH_imputed`
+- **Repeated-measures random effect:** retain all rows and add nested random effect (`ParticipantID / FullKeyID`)
+
+Findings were highly consistent across all three strategies for key inferential terms (Condition and Timing): effect directions were unchanged, magnitudes were very similar, and significance patterns were stable. The median-collapsed model fit slightly worse than GM collapse; the added duplicate-level random effect did not materially alter fixed-effect inference.
+
+**Proposed reporting frame:** use GM collapse as the parsimonious primary analysis, with median collapse and duplicate-level random effect as prespecified sensitivity analyses demonstrating robustness to duplicate handling.
