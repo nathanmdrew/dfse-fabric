@@ -52,7 +52,7 @@ The baseline model (m1) required a constant `c = min(nonzero)/2` for the log tra
 
 Shirt (n=1), Lower Chest (n=2), and Fly (n=8) were collected ad hoc due to visible contamination at sample collection time — different criteria than the standard protocol locations. Shirt could likely be combined with Sleeve (per the project PI). **Sensitivity analysis:** (a) combine Shirt with Sleeve, (b) omit all ad hoc locations, (c) otherwise account for the design difference.
 
-**Resolution (adopted for m4b onward):** Collapse ad hoc locations into anatomically adjacent standard locations:
+**Potential Resolution (adopted for some models on and after m4b):** Collapse ad hoc locations into anatomically adjacent standard locations:
 
 | Ad hoc location | Collapsed into | Rationale |
 |---|---|---|
