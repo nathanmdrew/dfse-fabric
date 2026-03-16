@@ -77,7 +77,9 @@ cond12 <- step12_5$condition_contrast_results
 time12 <- step12_5$timing_results
 loc12 <- step12_5$location_contrast_results
 
-diag12 <- step12_4$diag_summary
+# Load diagnostics from dedicated files (saved in Step 7 append)
+diag12 <- readRDS(file.path(out_12, "diag_summary.rds"))
+p_diag_combined_12 <- readRDS(file.path(out_12, "p_diag_combined.rds"))
 ```
 
 ## 3. Data and model framework carried across analyses
@@ -281,7 +283,7 @@ diag12
 ### 8.2 Diagnostic plots
 
 ```{r}
-step12_4$p_diag_combined
+p_diag_combined_12
 ```
 
 Diagnostic interpretation (brief): no major structural violations were evident; mild tail behavior and sparse location-specific outliers remain expected caveats.
