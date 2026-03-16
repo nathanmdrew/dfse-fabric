@@ -1,0 +1,306 @@
+---
+title: "Technical Analysis Update: PAH Exposure Modeling Sensitivity and Primary Model"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## 1. Background and goals
+
+This report summarizes the model-development workflow used to evaluate condition effects on total PAH exposure under sparse data and substantial non-detects.
+
+The primary methodological decisions addressed were:
+
+1. How to handle non-detects.
+2. How many PAHs to include in the response definition.
+3. How to handle repeated measures.
+4. What model form to use for adjusted between-condition contrasts.
+
+The sequence below follows the exploratory-to-primary progression:
+
+- **Script 10**: non-imputed baseline boundary analysis.
+- **Script 09**: sensitivity to imputation beta.
+- **Script 11**: sensitivity to number of PAHs under consistent MLE imputation.
+- **Script 12**: selected primary analysis.
+
+## 2. Setup and artifact loading
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(patchwork)
+
+# Script outputs
+out_09 <- "09_output"
+out_10 <- "10_output"
+out_11 <- "11_output"
+out_12 <- "12_output"
+
+# ---- Script 10 artifacts ----
+step10_2 <- readRDS(file.path(out_10, "step2_artifacts.rds"))
+step10_3 <- readRDS(file.path(out_10, "step3_artifacts.rds"))
+qc10 <- readRDS(file.path(out_10, "step2_model_qc.rds"))
+
+cond10 <- step10_2$condition_contrast_results
+time10 <- step10_2$timing_results
+
+# ---- Script 09 artifacts ----
+step09_2 <- readRDS(file.path(out_09, "step2_results.rds"))
+cond09 <- readRDS(file.path(out_09, "condition_contrast_results.rds"))
+time09 <- readRDS(file.path(out_09, "timing_results.rds"))
+
+# ---- Script 11 artifacts ----
+step11_6 <- readRDS(file.path(out_11, "step6_artifacts.rds"))
+step11_7 <- readRDS(file.path(out_11, "step7_artifacts.rds"))
+step11_8 <- readRDS(file.path(out_11, "step8_artifacts.rds"))
+
+cond11 <- step11_6$condition_contrast_results
+time11 <- step11_6$timing_results
+
+# ---- Script 12 artifacts ----
+step12_1 <- readRDS(file.path(out_12, "step1_artifacts.rds"))
+step12_2 <- readRDS(file.path(out_12, "step2_artifacts.rds"))
+step12_3 <- readRDS(file.path(out_12, "step3_artifacts.rds"))
+step12_4 <- readRDS(file.path(out_12, "step4_artifacts.rds"))
+step12_5 <- readRDS(file.path(out_12, "step5_artifacts.rds"))
+step12_6 <- readRDS(file.path(out_12, "step6_artifacts.rds"))
+
+fit12 <- step12_5$fitstats
+fixef12 <- step12_5$fixef
+cond12 <- step12_5$condition_contrast_results
+time12 <- step12_5$timing_results
+loc12 <- step12_5$location_contrast_results
+
+diag12 <- step12_4$diag_summary
+```
+
+## 3. Data and model framework carried across analyses
+
+Across scripts, model comparison was done by varying one lever at a time while attempting to keep mechanisms stable where possible.
+
+Common model framework (where applicable):
+
+- Outcome on log scale.
+- Mixed-effects model with random intercept for `ParticipantID`.
+- Additive fixed effects: `Condition + Timing_new + SampleLocation`.
+- Heteroscedastic residual structure by location when estimable.
+- Main inferential target: pairwise **Condition** contrasts.
+
+## 4. Baseline non-imputed boundary analysis (Script 10)
+
+### 4.1 Objective
+
+Script 10 re-established a non-imputed baseline under multiple response definitions:
+
+- PAH set sizes: top1, top4, top6, top15.
+- Response modes: all-data with \(\log(x + c)\), and detects-only with \(\log(x)\).
+
+### 4.2 Model comparability tiers
+
+```{r}
+qc10 |>
+  count(comparison_tier, variance_structure, fit_success, name = "n_runs") |>
+  arrange(comparison_tier)
+```
+
+Interpretation note: Script 10 included mixed comparability tiers (heteroscedastic primary fits and homoscedastic fallback fits).
+
+### 4.3 Baseline boundary summaries
+
+```{r}
+step10_3$condition_boundary
+```
+
+```{r}
+step10_3$timing_boundary
+```
+
+### 4.4 Key baseline takeaway
+
+- Direction of the larger condition contrasts was generally stable.
+- The smaller **OL vs SL** contrast showed weaker/less stable evidence.
+- Timing direction was generally stable, with weaker significance in sparse settings.
+
+## 5. Imputation beta sensitivity (Script 09)
+
+### 5.1 Objective
+
+Script 09 evaluated sensitivity of contrasts to imputation scaling choices while holding PAH set and model structure fixed.
+
+### 5.2 Condition contrasts across beta settings
+
+```{r}
+cond09 |>
+  select(beta_label, contrast, estimate, p.value, significant) |>
+  arrange(contrast, beta_label)
+```
+
+### 5.3 Timing contrasts across beta settings
+
+```{r}
+time09 |>
+  select(beta_label, contrast, estimate, p.value, significant) |>
+  arrange(beta_label)
+```
+
+### 5.4 Key beta-sensitivity takeaway
+
+- Main directional conclusions were robust to beta variation.
+- Smaller contrasts showed more sensitivity in magnitude/statistical significance.
+
+## 6. PAH-set sensitivity under consistent MLE imputation (Script 11)
+
+### 6.1 Objective
+
+Script 11 isolated sensitivity to the number of PAHs included in total exposure:
+
+- top1 through top10, plus top15.
+- Consistent imputation mechanism (PAH-level MLE beta).
+- GM collapse and heteroscedastic mixed model retained.
+
+### 6.2 Condition boundary summary
+
+```{r}
+step11_7$condition_boundary
+```
+
+### 6.3 Timing boundary summary
+
+```{r}
+step11_7$timing_boundary
+```
+
+### 6.4 Sensitivity figure
+
+```{r}
+step11_8$p_step8_combined
+```
+
+### 6.5 Key PAH-set takeaway
+
+- Contrast directions remained broadly stable across PAH-set size.
+- Contrast magnitudes shifted as more low-detect/imputed analytes were included.
+
+## 7. Primary selected analysis (Script 12)
+
+### 7.1 Final decision set
+
+Primary analysis decisions:
+
+1. Response uses **Top 4 PAHs**.
+2. Non-detects imputed via **PAH-level MLE beta** (`elnormCensored`).
+3. Repeated measures handled via **GM collapse** within timing/location/participant strata.
+4. Main model is **heteroscedastic LME**.
+
+### 7.2 Top-4 definition check
+
+```{r}
+step12_1$top4_map
+```
+
+### 7.3 Imputation summary (Top 4)
+
+```{r}
+step12_2$imputation_log |>
+  select(pah_name, beta_mle, n_detect, n_cens, fit_ok, fit_method)
+```
+
+### 7.4 Collapse and model fit checks
+
+```{r}
+step12_3$step3_qc
+```
+
+```{r}
+step12_4$step4_qc
+```
+
+### 7.5 Primary fit statistics and fixed effects
+
+```{r}
+fit12
+```
+
+```{r}
+fixef12 |>
+  select(term, estimate, std_error, df, t_value, p_value, fold_change, pct_change)
+```
+
+### 7.6 Primary contrasts
+
+#### Condition contrasts (primary)
+
+```{r}
+cond12 |>
+  select(contrast, estimate, SE, df, t.ratio, p.value, significant)
+```
+
+#### Timing contrast (secondary)
+
+```{r}
+time12 |>
+  select(contrast, estimate, SE, df, t.ratio, p.value, significant)
+```
+
+#### Sampling location contrasts (exploratory)
+
+```{r}
+loc12 |>
+  select(contrast, estimate, SE, df, t.ratio, p.value, significant) |>
+  arrange(p.value)
+```
+
+### 7.7 Primary figures
+
+```{r}
+step12_6$p_condition_step6
+```
+
+```{r}
+step12_6$p_timing_step6
+```
+
+```{r}
+step12_6$p_location_step6
+```
+
+## 8. Model diagnostics (Script 12)
+
+### 8.1 Numeric diagnostics
+
+```{r}
+diag12
+```
+
+### 8.2 Diagnostic plots
+
+```{r}
+step12_4$p_diag_combined
+```
+
+Diagnostic interpretation (brief): no major structural violations were evident; mild tail behavior and sparse location-specific outliers remain expected caveats.
+
+## 9. Synthesis and forward manuscript path
+
+### 9.1 What appears robust
+
+- Major condition-direction findings are stable across sensitivity analyses.
+- Timing-direction finding is generally stable.
+- Primary model results are consistent with exploratory boundary analyses.
+
+### 9.2 Where uncertainty remains
+
+- Smaller between-condition differences (particularly OL vs SL) are less stable.
+- Location-specific contrasts are exploratory due to sparse support and many pairwise tests.
+
+### 9.3 Proposed manuscript framing
+
+- Present Script 12 as the pre-specified/selected primary model.
+- Use Scripts 09, 10, and 11 to document robustness and bounds.
+- Explicitly state that inference is conditional on single imputation (imputation uncertainty not propagated).
