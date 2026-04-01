@@ -140,7 +140,7 @@ step1_artifacts <- list(
   pah_sets_map = pah_sets_map
 )
 
-saveRDS(step1_artifacts, file.path(output_dir_10, "step1_artifacts.rds"))
+#saveRDS(step1_artifacts, file.path(output_dir_10, "step1_artifacts.rds"))
 
 # ---------------------------------
 # --- Step 1a: QC checks         ---
@@ -202,7 +202,7 @@ step1_qc <- list(
   flagged_pairs = pair_qc |> filter(qc_flag != "OK")
 )
 
-saveRDS(step1_qc, file.path(output_dir_10, "step1_qc.rds"))
+#saveRDS(step1_qc, file.path(output_dir_10, "step1_qc.rds"))
 
 step1_qc
 
@@ -228,7 +228,7 @@ analysis_grid <- tidyr::crossing(
   ) |>
   dplyr::relocate(run_id, run_label, pah_set, n_pahs, response_mode, pah_names)
 
-saveRDS(analysis_grid, file.path(output_dir_10, "analysis_grid.rds"))
+#saveRDS(analysis_grid, file.path(output_dir_10, "analysis_grid.rds"))
 
 analysis_grid
 
@@ -349,7 +349,7 @@ step1c_artifacts <- list(
   run_set_maps = run_set_maps
 )
 
-saveRDS(step1c_artifacts, file.path(output_dir_10, "step1c_artifacts.rds"))
+#saveRDS(step1c_artifacts, file.path(output_dir_10, "step1c_artifacts.rds"))
 
 step1c_artifacts
 
@@ -376,7 +376,7 @@ step1c_qc_tiny <- run_diagnostics |>
 stopifnot(all(step1c_qc_tiny$collapse_matches_expected))
 stopifnot(all(step1c_qc_tiny$model_rows_valid))
 
-saveRDS(step1c_qc_tiny, file.path(output_dir_10, "step1c_qc_tiny.rds"))
+#saveRDS(step1c_qc_tiny, file.path(output_dir_10, "step1c_qc_tiny.rds"))
 
 step1c_qc_tiny
 
@@ -698,14 +698,14 @@ step2_artifacts <- list(
   timing_results = timing_results
 )
 
-saveRDS(step2_artifacts, file.path(output_dir_10, "step2_artifacts.rds"))
-saveRDS(model_qc_step2, file.path(output_dir_10, "step2_model_qc.rds"))
+#saveRDS(step2_artifacts, file.path(output_dir_10, "step2_artifacts.rds"))
+#saveRDS(model_qc_step2, file.path(output_dir_10, "step2_model_qc.rds"))
 
 # Compact QC summary for immediate review
 step2_qc <- model_qc_step2 |>
   dplyr::count(comparison_tier, variance_structure, fit_success, name = "n_runs")
 
-saveRDS(step2_qc, file.path(output_dir_10, "step2_qc.rds"))
+#saveRDS(step2_qc, file.path(output_dir_10, "step2_qc.rds"))
 
 step2_qc
 
@@ -816,7 +816,7 @@ step3_artifacts <- list(
   step3_plots = step3_plots
 )
 
-saveRDS(step3_artifacts, file.path(output_dir_10, "step3_artifacts.rds"))
+#saveRDS(step3_artifacts, file.path(output_dir_10, "step3_artifacts.rds"))
 
 step3_artifacts
 

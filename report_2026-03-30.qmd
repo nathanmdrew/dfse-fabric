@@ -5,6 +5,10 @@ format:
     toc: true
     toc-depth: 3
     number-sections: true
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: true
 execute:
   echo: false
   warning: false
@@ -24,10 +28,10 @@ The primary methodological decisions addressed were:
 
 The sequence below follows the exploratory-to-primary progression:
 
-- **Script 10**: non-imputed baseline boundary analysis.
-- **Script 09**: sensitivity to imputation beta.
-- **Script 11**: sensitivity to number of PAHs under consistent MLE imputation.
-- **Script 12**: selected primary analysis.
+- non-imputed baseline boundary analysis.
+- sensitivity to imputation beta.
+- sensitivity to number of PAHs under consistent MLE imputation.
+- selected primary analysis.
 
 There are a few adjustments made to the data:
 
@@ -36,6 +40,7 @@ There are a few adjustments made to the data:
 3. The single "Shirt" sample location was combined with "Sleeve".
 
 ## 2. Setup and artifact loading
+- Code not shown here.
 
 ```{r}
 library(tidyverse)
@@ -95,22 +100,22 @@ Across scripts, model comparison was done by varying one lever at a time while a
 
 Common model framework (where applicable):
 
-- Outcome on log scale.
+- Outcome (Sum of PAHs, ug/m3)on log scale.
 - Mixed-effects model with random intercept for `ParticipantID`.
 - Additive fixed effects: `Condition + Timing_new + SampleLocation`.
 - Heteroscedastic residual structure by location when estimable.
-- Main inferential target: pairwise **Condition** contrasts.
+- Main inferential target: pairwise **Condition** and **Timing** contrasts.
 
 ## 4. Baseline non-imputed boundary analysis (Script 10)
 
 ### 4.1 Objective
 
-Script 10 re-established a non-imputed baseline under multiple response definitions:
+Re-established a non-imputed baseline under multiple response definitions:
 
-- PAH set sizes: top1, top4, top6, top15.
-- Response modes: all-data with \(\log(x + c)\), and detects-only with \(\log(x)\).
+- PAH set sizes: top1 (>10% detection), top4 (>5% detection), top6 (mirroring underglove method), top15 (all PAHs).
+- Response modes: all-data with $\\log(x + c)$, and detects-only with $\\log(x)$.
 
-The data were modeled as-is with the framework described above. This provided a reference point for how the data "look" without imputation and how model fits behaved across response definitions. These results are not intended for direct inference but rather to contextualize the sensitivity analyses in Scripts 09 and 11 and the primary model in Script 12. This could be considered a one side of a boundary analysis, with the other side being the fully imputed model of all 15 PAHs in Script 11.
+The data were modeled as-is with the framework described above. This provided a reference point for how the data "look" without imputation and how model fits behaved across response definitions. These results are not intended for direct inference but rather to contextualize the sensitivity analyses (beta sensitivity and PAH-set sensitivity) and the primary model. This could be considered a one side of a boundary analysis, with the other side being the fully imputed model of all 15 PAHs (worst-case, non-zero exposure estimates for ALL PAHs).
 
 ### 4.2 Model comparability tiers
 
@@ -121,7 +126,7 @@ qc10 |>
   kable()
 ```
 
-Interpretation note: Script 10 included mixed comparability tiers (heteroscedastic primary fits and homoscedastic fallback fits). The heteroscedastic fits generally succeeded for smaller PAH sets (detects only) but struggled with larger sets (nondetects included), which is consistent with the increased sparsity and imputation challenges. 
+Interpretation note: includes mixed comparability tiers (heteroscedastic primary fits and homoscedastic fallback fits). The heteroscedastic fits (preferred for these data) generally succeeded for smaller PAH sets (detects only) but struggled with larger sets (nondetects included), which is consistent with the increased sparsity and imputation challenges. 
 
 The different variance structures aren't directly comparable, but they still provide useful context for how the data behave under different response definitions and modeling assumptions.
 
@@ -149,7 +154,7 @@ step10_3$timing_boundary |>
 
 ### 5.1 Objective
 
-Script 09 evaluated sensitivity of contrasts to imputation scaling choices while holding PAH set and model structure fixed.
+Evaluated sensitivity of contrasts to imputation scaling choices while holding PAH set and model structure fixed.
 
 ### 5.2 Condition contrasts across beta settings
 
@@ -160,6 +165,8 @@ cond09 |>
   kable()
 ```
 
+- Interpretation: the main directional conclusions (SS > SL > OL) were consistent across beta settings, but the statistical significance of contrasts varied more for smaller contrasts (OL vs SL) than for larger contrasts (SS vs SL, SS vs OL). This suggests that while the overall pattern of differences is robust to imputation scaling, the confidence in smaller contrasts is more sensitive to how non-detects are handled.
+
 ### 5.3 Timing contrasts across beta settings
 
 ```{r}
@@ -168,6 +175,8 @@ time09 |>
   arrange(beta_label) |>
   kable()
 ```
+
+- Interpretation: the timing contrast (Doffing > Donning/Firefighting) was generally consistent in direction and statistical significance across beta settings. The magnitude of the contrast varied with the choice of beta, with small betas having larger estimated contrasts and stronger significance, while larger betas had smaller estimated contrasts and weaker significance. This suggests that the timing effect is somewhat sensitive to imputation scaling, but the overall direction of the effect is robust.
 
 ### 5.4 Key beta-sensitivity takeaway
 
@@ -178,7 +187,7 @@ time09 |>
 
 ### 6.1 Objective
 
-Script 11 isolated sensitivity to the number of PAHs included in total exposure:
+Evaluated sensitivity to the number of PAHs included in total exposure:
 
 - top1 through top10, plus top15.
 - Consistent imputation mechanism (PAH-level MLE beta).
@@ -191,12 +200,16 @@ step11_7$condition_boundary |>
   kable()
 ```
 
+- For all evaluated PAH sets, the largest contrast (SS vs OL) remained significant and in the same direction, with SS associated with higher average exposure. The SS vs SL contrast also remained significant and in the same direction, again with SS associated with a higher average exposure. The smaller contrast (OL vs SL) showed more variability in significance across PAH sets, with some sets showing significant differences and others not - this was associated with the number of PAHs (top 8, 9, 10, 15 were significant while top 7 or fewer were not). This suggests that the main condition effect (SS > OL) is robust to the number of PAHs included, while the smaller contrast (OL vs SL) is more sensitive to this choice.
+
 ### 6.3 Timing boundary summary
 
 ```{r}
 step11_7$timing_boundary |>
   kable()
 ```
+
+- For all evaluated PAH sets, the timing contrast (Doffing > Donning/Firefighting) remained significant and in the same direction, with Doffing associated with higher average exposure. The magnitude of the contrast varied across PAH sets, with some sets showing larger estimated contrasts than others, but the overall pattern of significance and direction was consistent. Roughly, as more PAHs were included, the estimated difference decreased. This suggests that the timing effect is robust to the number of PAHs included in the total exposure definition.
 
 ### 6.4 Sensitivity figure
 
@@ -270,6 +283,8 @@ cond12 |>
   kable()
 ```
 
+- Interpretation: the main condition contrasts (SS vs SL and SS vs OL) were significant and in the expected direction, with SS associated with higher average exposure (SS > SL > OL). The smaller contrast (OL vs SL) was not significant, suggesting less confidence in a difference between these two conditions. This pattern is consistent with the boundary analyses and sensitivity analyses, reinforcing the robustness of the main condition effect while highlighting uncertainty in the smaller contrast.
+
 #### Timing contrast (secondary)
 
 ```{r}
@@ -277,6 +292,8 @@ time12 |>
   select(contrast, estimate, SE, df, t.ratio, p.value, significant) |>
   kable()
 ```
+
+- Interpretation: the timing contrast (Doffing > Donning/Firefighting) was significant and in the expected direction, with Doffing associated with higher average exposure. This is consistent with the boundary analyses and sensitivity analyses, reinforcing the robustness of the timing effect.
 
 #### Sampling location contrasts (exploratory)
 

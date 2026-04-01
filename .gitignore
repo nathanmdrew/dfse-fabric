@@ -17,3 +17,7 @@ Thumbs.db
 # Other
 *.code-workspace
 *.pdf
+*.js
+*.css
+*.zip
+*.woff
