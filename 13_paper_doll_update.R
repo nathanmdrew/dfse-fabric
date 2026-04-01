@@ -629,3 +629,168 @@ artifacts <- list(
 saveRDS(artifacts, "13_output/step13_artifacts.rds")
 cat("Saved: 13_output/step13_artifacts.rds\n")
 cat("Contents:", paste(names(artifacts), collapse = ", "), "\n")
+
+
+# =============================================================================
+# --- Timing comparison paper doll function ------------------------------------
+# =============================================================================
+
+build_timing_page <- function(data_donning, data_doffing, value_col, max_val,
+                              page_title, scale_label = "Total PAH\n(µg/g)") {
+
+  shared_scale <- scale_fill_viridis_c(
+    option = "plasma", limits = c(0, max_val), na.value = "grey90",
+    name = scale_label, begin = 0.05, end = 0.95
+  )
+
+  doll_theme <- theme_void() +
+    theme(
+      plot.subtitle = element_text(hjust = 0.5, size = 9),
+      legend.position = "none"
+    )
+
+  make_front <- function(pah_by_location, val_col) {
+    fd <- body_regions_front |>
+      left_join(pah_by_location, by = c("region_name" = "SampleLocation")) |>
+      mutate(fill_val = replace_na(.data[[val_col]], 0),
+             fill_val = if_else(fill_val == 0, NA_real_, fill_val))
+    ggplot(fd, aes(x = x, y = y, fill = fill_val)) +
+      geom_tile(aes(width = width, height = height), color = "black", linewidth = 0.5) +
+      geom_text(aes(label = region_name), size = 2.5) +
+      shared_scale + coord_fixed() + doll_theme +
+      labs(subtitle = "Front")
+  }
+
+  make_back <- function(pah_by_location, val_col) {
+    bd <- body_regions_back |>
+      left_join(pah_by_location, by = c("region_name" = "SampleLocation")) |>
+      mutate(
+        fill_val = if_else(region_name == "Back",
+                           replace_na(.data[[val_col]], 0), NA_real_),
+        fill_val = if_else(fill_val == 0, NA_real_, fill_val),
+        not_sampled = is.na(.data[[val_col]]) & region_name == "Back",
+        is_back = region_name == "Back"
+      )
+    ggplot(bd, aes(x = x, y = y, fill = fill_val)) +
+      geom_tile(aes(width = width, height = height), color = "black", linewidth = 0.5) +
+      geom_text(aes(label = if_else(is_back & !not_sampled, "Back", "")), size = 2.5) +
+      geom_text(aes(label = if_else(not_sampled, "Back\n(NS)", "")),
+                size = 2, fontface = "italic", color = "grey50") +
+      shared_scale + coord_fixed() + doll_theme +
+      labs(subtitle = "Back")
+  }
+
+  # Also handle not-sampled in front
+  make_front_ns <- function(pah_by_location, val_col) {
+    fd <- body_regions_front |>
+      left_join(pah_by_location, by = c("region_name" = "SampleLocation")) |>
+      mutate(
+        raw_val = .data[[val_col]],
+        fill_val = case_when(
+          is.na(raw_val) ~ NA_real_,
+          raw_val == 0   ~ NA_real_,
+          TRUE           ~ raw_val
+        ),
+        not_sampled = is.na(raw_val)
+      )
+    ggplot(fd, aes(x = x, y = y)) +
+      geom_tile(aes(width = width, height = height, fill = fill_val),
+                color = "black", linewidth = 0.5) +
+      geom_text(aes(label = region_name), size = 2.5,
+                data = fd |> filter(!not_sampled)) +
+      geom_text(aes(label = paste0(region_name, "\n(NS)")), size = 2,
+                fontface = "italic", color = "grey50",
+                data = fd |> filter(not_sampled)) +
+      shared_scale + coord_fixed() + doll_theme +
+      labs(subtitle = "Front")
+  }
+
+  # --- Row labels ---
+  label_donning <- wrap_elements(
+    grid::textGrob("Donning/\nFirefighting", rot = 90,
+                   gp = grid::gpar(fontsize = 11, fontface = "bold"))
+  )
+  label_doffing <- wrap_elements(
+    grid::textGrob("Doffing", rot = 90,
+                   gp = grid::gpar(fontsize = 11, fontface = "bold"))
+  )
+
+  # --- Horizontal separator ---
+  h_sep <- wrap_elements(
+    grid::linesGrob(x = unit(c(0, 1), "npc"), y = unit(c(0.5, 0.5), "npc"),
+                    gp = grid::gpar(col = "grey50", lwd = 1))
+  )
+
+  layout <- "
+    ABC
+    DDD
+    EFG
+    HHH
+  "
+
+  label_donning + make_front_ns(data_donning, value_col) + make_back(data_donning, value_col) +
+    h_sep +
+    label_doffing + make_front_ns(data_doffing, value_col) + make_back(data_doffing, value_col) +
+    guide_area() +
+    plot_layout(
+      design = layout,
+      widths = c(0.5, 5, 5),
+      heights = c(10, 0.3, 10, 1),
+      guides = "collect"
+    ) +
+    plot_annotation(
+      title = page_title,
+      theme = theme(
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
+      )
+    ) &
+    theme(legend.position = "bottom", legend.key.width = unit(2.5, "cm"))
+}
+
+# --- QC test: Aggregate SS, imputed -------------------------------------------
+s13 <- readRDS("13_output/step13_artifacts.rds")
+d_aggregate_complete <- s13$d_aggregate_complete
+agg_max <- s13$agg_max
+
+test_donning <- d_aggregate_complete |>
+  filter(Condition == "SS", Timing_new == "Donning/Firefighting")
+
+test_doffing <- d_aggregate_complete |>
+  filter(Condition == "SS", Timing_new == "Doffing")
+
+build_timing_page(test_donning, test_doffing, "totalPAH_imputed",
+                  agg_max, "Aggregate | SS | Imputed — Timing Comparison")
+
+# =============================================================================
+# --- Timing comparison PDFs (aggregate) ---------------------------------------
+# =============================================================================
+
+filename_timing <- "13_output/paper_doll_timing_aggregate.pdf"
+cat("Generating:", filename_timing, "...\n")
+
+conditions <- sort(unique(d_aggregate_complete$Condition))
+phases <- c("totalPAH_top4_measured", "totalPAH_imputed")
+phase_labels <- c("As-Measured", "Imputed")
+
+pdf(filename_timing, width = 10, height = 12)
+
+for (cond in conditions) {
+  for (j in seq_along(phases)) {
+
+    data_donning <- d_aggregate_complete |>
+      filter(Condition == cond, Timing_new == "Donning/Firefighting")
+
+    data_doffing <- d_aggregate_complete |>
+      filter(Condition == cond, Timing_new == "Doffing")
+
+    page_title <- paste0("Aggregate | ", cond, " | ", phase_labels[j],
+                         " — Timing Comparison")
+
+    p <- build_timing_page(data_donning, data_doffing, phases[j],
+                           agg_max, page_title)
+    print(p)
+  }
+}
+
+dev.off()
+cat("Saved:", filename_timing, "-", length(conditions) * length(phases), "pages\n")
